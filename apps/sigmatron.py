@@ -1,55 +1,102 @@
 import streamlit as st
+import pandas as pd
+import yaml
 from pyodide.http import pyfetch
 from pathlib import Path
 from sigma.rule import SigmaRule
 from sigma.backends.microsoft365defender import Microsoft365DefenderBackend
 
+st.set_page_config(
+    page_title="Sigmatron",
+    layout="wide"
+)
+
 st.title("Sigmatron")
-st.markdown("## Utility to browse and display sigma rules")
-col1, col2 = st.columns(2)
+st.markdown("[stlite-apps main index](../)")
+st.markdown("## Utility to find and view sigma rules with conversions")
 
-# Create backend, which automatically adds the pipeline
-backends = [Microsoft365DefenderBackend()]
 
-# display short paths
-def obj_name(obj):
-    return obj.name
+@st.cache_data
+def load_rules(path = Path("sigma")):
+    sigma_rules = []
+    logsource_keys = ["product", "category", "service"]
+    
+    for rule in Path("sigma").rglob("*.yml"):
+        yml = yaml.safe_load(rule.read_text())
+        
+        try:
+            src = yml["logsource"]
+        except KeyError:
+            continue
+        
+        rule_meta = {
+            "path": rule,
+            "title": yml["title"],
+            "tags": yml.get("tags", [])
+        }
+        
+        for key in logsource_keys: # all filter keys must be lists
+            if src.get(key):
+                rule_meta[key] = [src[key]]
+            else:
+                rule_meta[key] = []
+        
+        sigma_rules.append(rule_meta)
+    
+    return sigma_rules
 
-# Basic file browser
-products = list(Path("sigma").glob("*/*"))
-product = col1.selectbox("Product", products, index = products.index(Path("sigma/rules/windows")), format_func=lambda p: p.relative_to("sigma"))
-categories = list(product.glob("*"))
-category = col2.selectbox("Category", categories, index = categories.index(product / "process_creation"), format_func=obj_name)
+all_rules = load_rules()
+filters = {}
 
-if category.is_dir():
-    rules = category.rglob("*.yml")
-else:
-    rules = [category]
+with st.sidebar:
+    st.markdown("## Filters")
+    defaults = {
+        "product": "windows",
+        "category": "process_creation"
+    }
+    for name in ["tags", "product", "category", "service"]:
+        options = sorted(set().union(*(r[name] for r in all_rules)))
+        filters[name] = st.multiselect(f"{name.title()} ({len(options)} total)", options, default = defaults.get(name, []))
 
-rule = st.selectbox("Sigma Rule", rules, format_func=obj_name)
+def filter_rules(seq):
+    for rule in seq:
+        for name, option in filters.items():
+            # if a multiselect set, and any of its items in the yaml rule, return
+            if option and not set(option).intersection(set(rule[name])):
+                break
+        else:
+            yield rule
 
-sigma_yaml = rule.read_text()
+rules = sorted(filter_rules(all_rules), key=lambda r: r["title"])
 
-# Define an example rule as a YAML str
-sigma_rule = SigmaRule.from_yaml(sigma_yaml)
+rule = st.selectbox(f"Sigma Rule ({len(rules)} total) to display", rules, format_func=lambda r: r["title"])
 
-backend = col1.selectbox("Sigma Backend", backends, format_func=obj_name)
+with st.sidebar:
+    # Create backend, which automatically adds the pipeline
+    backends = [(Microsoft365DefenderBackend(), "kusto")]
+    st.markdown("## Convert and display")
+    backend, lang = st.selectbox(f"Sigma Backend ({len(backends)} total)", backends, format_func=lambda b: f"{b[0].name} ({b[1]})")
 
 # Convert the rule
-try:
-    defender_kql = backend.convert_rule(sigma_rule)[0]
-except Exception as e:
-    defender_kql = str(e)
+if rule:
+    sigma_yaml = rule["path"].read_text()
+    sigma_rule = SigmaRule.from_yaml(sigma_yaml)
+    try:
+        converted = backend.convert_rule(sigma_rule)[0]
+    except Exception as e:
+        converted = str(e)
+else:
+    sigma_yaml = converted = "No rule selected..."
 
 # Display the conversion
 st.markdown(f"""
-## KQL Query
+## {backend.name.replace("backend", "").strip()} Query ({lang})
 
-```kusto
-{defender_kql}
+```{lang}
+{converted}
 ```
 
-## Original sigma rule
+## Sigma YAML
 
 ```yaml
 {sigma_yaml}
