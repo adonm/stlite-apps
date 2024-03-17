@@ -1,33 +1,52 @@
 import streamlit as st
 from pyodide.http import pyfetch
+from pathlib import Path
 from sigma.rule import SigmaRule
 from sigma.backends.microsoft365defender import Microsoft365DefenderBackend
-from sigma.pipelines.microsoft365defender import microsoft_365_defender_pipeline
 
 st.title("Sigmatron")
 st.markdown("## Utility to browse and display sigma rules")
+col1, col2 = st.columns(2)
 
-base_url = st.text_input('Base url', 'https://raw.githubusercontent.com/SigmaHQ/sigma/master')
-sigma_path = st.text_input('Sigma YAML path', '/rules/windows/file/file_event/file_event_win_hktl_mimikatz_files.yml')
+# Create backend, which automatically adds the pipeline
+backends = [Microsoft365DefenderBackend()]
 
-async def load_yaml(url):
-    res = await pyfetch(url)
-    data = await res.text()
-    return data
+# display short paths
+def obj_name(obj):
+    return obj.name
 
-sigma_yaml = await load_yaml(base_url + sigma_path)
+# Basic file browser
+products = list(Path("sigma").glob("*/*"))
+product = col1.selectbox("Product", products, index = products.index(Path("sigma/rules/windows")), format_func=lambda p: p.relative_to("sigma"))
+categories = list(product.glob("*"))
+category = col2.selectbox("Category", categories, index = categories.index(product / "process_creation"), format_func=obj_name)
+
+if category.is_dir():
+    rules = category.rglob("*.yml")
+else:
+    rules = [category]
+
+rule = st.selectbox("Sigma Rule", rules, format_func=obj_name)
+
+sigma_yaml = rule.read_text()
 
 # Define an example rule as a YAML str
 sigma_rule = SigmaRule.from_yaml(sigma_yaml)
-# Create backend, which automatically adds the pipeline
-m365def_backend = Microsoft365DefenderBackend()
+
+backend = col1.selectbox("Sigma Backend", backends, format_func=obj_name)
 
 # Convert the rule
+try:
+    defender_kql = backend.convert_rule(sigma_rule)[0]
+except Exception as e:
+    defender_kql = str(e)
+
+# Display the conversion
 st.markdown(f"""
 ## KQL Query
 
 ```kusto
-{m365def_backend.convert_rule(sigma_rule)[0]}
+{defender_kql}
 ```
 
 ## Original sigma rule
