@@ -1,108 +1,95 @@
 import streamlit as st
-import pandas as pd
-import yaml, time
-from pyodide.http import pyfetch
+import streamlit_permalink as stp
+import yaml
 from pathlib import Path
 from sigma.rule import SigmaRule
 from sigma.backends.microsoft365defender import Microsoft365DefenderBackend
 
-st.set_page_config(
-    page_title="Sigmatron",
-    layout="wide"
-)
+# App configuration
+st.set_page_config(page_title="Sigmatron", layout="wide")
+st.title("Sigmatron :lab_coat: (◑‿◐) :female-detective:")
 
-st.title("Sigmatron")
-st.markdown("[stlite-apps main index](../)")
-st.markdown("## Utility to find and view sigma rules with conversions")
+# Create two columns for reset filters button and link button
+col1, col2 = st.columns(2)
 
-manual_entry = st.toggle('Enter yaml manually')
-sigma_yaml = False
+# Reset filters button
+if col1.button("Reset filters"):
+    st.query_params.clear()
 
+# Link button to the main index of stlite-apps
+col2.link_button("stlite-apps main index", "../")
+
+
+# Load sigma rules from the "sigma" directory
 @st.cache_data
-def load_rules(path = Path("sigma")):
-    sigma_rules = []
-    logsource_keys = ["product", "category", "service"]
-    
-    for rule in Path("sigma").rglob("*.yml"):
-        yml = yaml.safe_load(rule.read_text())
-        
+def load_rules():
+    rules = {}
+    for rule_file in Path("sigma").rglob("*.yml"):
+        rule = yaml.safe_load(rule_file.read_text())
         try:
-            src = yml["logsource"]
+            source = rule["logsource"]
         except KeyError:
+            # Skip rules without a "logsource" key
             continue
-        
-        rule_meta = {
-            "path": rule,
-            "title": yml["title"],
-            "tags": yml.get("tags", [])
-        }
-        
-        for key in logsource_keys: # all filter keys must be lists
-            if src.get(key):
-                rule_meta[key] = [src[key]]
-            else:
-                rule_meta[key] = []
-        
-        sigma_rules.append(rule_meta)
-    
-    return sigma_rules
 
-if not manual_entry:
-    all_rules = load_rules()
-    filters = {}
+        rule_meta = {
+            "path": rule_file,
+            "title": rule["title"],
+            "tags": rule.get("tags", []),
+            "description": rule["description"],
+            "product": [source.get("product")] if "product" in source else [],
+            "category": [source.get("category")] if "category" in source else [],
+            "service": [source.get("service")] if "service" in source else [],
+        }
+        title = f"{rule['date']} - {rule['title']}"
+        if "modified" in rule:
+            title = f"{rule['modified']} - {rule['title']} (created {rule['date']})"
+
+        rules[title] = rule_meta
+
+    return rules
+
+
+# Option to enter YAML manually
+if stp.toggle("Enter yaml manually", url_key="manual"):
+    sigma_yaml = st.text_area("YAML to convert")
+else:
+    # Load rules and apply filters
+    rules = load_rules()
+    fltrs, defaults = {}, {"product": ["windows"], "category": ["process_creation"]}
+
+    # Sidebar for filters
     with st.sidebar:
         st.markdown("## Filters")
-        defaults = {
-            "product": "windows",
-            "category": "process_creation"
-        }
-        for name in ["tags", "product", "category", "service"]:
-            options = sorted(set().union(*(r[name] for r in all_rules)))
-            filters[name] = st.multiselect(f"{name.title()} ({len(options)} total)", options, default = defaults.get(name, []))
+        for attr in ["tags", "product", "category", "service"]:
+            options = sorted(set().union(*(el[attr] for el in rules.values())))
+            fltrs[attr] = stp.multiselect(f"{attr.title()} ({len(options)} total)", options, default=defaults.get(attr, []), url_key=attr)
 
-    def filter_rules(seq):
-        for rule in seq:
-            for name, option in filters.items():
-                # if a multiselect set, and any of its items in the yaml rule, return
-                if option and not set(option).intersection(set(rule[name])):
-                    break
-            else:
-                yield rule
-    
-    rules = sorted(filter_rules(all_rules), key=lambda r: r["title"])
-    
-    rule = st.selectbox(f"Sigma Rule ({len(rules)} total) to display", rules, format_func=lambda r: r["title"])
-    sigma_yaml = rule["path"].read_text()
-else:
-    sigma_yaml = st.text_area("YAML to convert")
+    # Filter rules based on selected filters
+    filtered_rules = [rule for rule, el in rules.items() if all(set(opt).intersection(set(el[attr])) for attr, opt in fltrs.items() if opt)]
 
+    # Display filtered rules
+    if filtered_rules:
+        rule_title = stp.selectbox(f"Sigma Rule ({len(filtered_rules)}/{len(rules)} total) to display", sorted(filtered_rules, reverse=True), url_key="rule")
+        selected_rule = rules[rule_title]
+        sigma_yaml = selected_rule["path"].read_text()
+    else:
+        st.write("No rules for the selected filters:")
+        st.write(fltrs)
+
+# Sidebar for selecting backend and displaying conversion
 with st.sidebar:
-    # Create backend, which automatically adds the pipeline
-    backends = [(Microsoft365DefenderBackend(), "kusto")]
+    backends = {"M365 Defender (KQL)": (Microsoft365DefenderBackend(), "kusto")}
     st.markdown("## Convert and display")
-    backend, lang = st.selectbox(f"Sigma Backend ({len(backends)} total)", backends, format_func=lambda b: f"{b[0].name} ({b[1]})")
+    backend_name = stp.selectbox(f"Sigma Backend ({len(backends)} total)", backends.keys(), url_key="backend")
+    backend, lang = backends[backend_name]
 
-# Convert the rule
-if sigma_yaml:
-    sigma_rule = SigmaRule.from_yaml(sigma_yaml)
+# Convert and display the selected rule
+if "sigma_yaml" in locals() and sigma_yaml is not None:
     try:
-        converted = backend.convert_rule(sigma_rule)[0]
+        converted = backend.convert_rule(SigmaRule.from_yaml(sigma_yaml))[0]
     except Exception as e:
         converted = str(e)
-else:
-    sigma_yaml = converted = "Nothing to convert..."
 
-# Display the conversion
-st.markdown(f"""
-## {backend.name.replace("backend", "").strip()} Query ({lang})
-
-```{lang}
-{converted}
-```
-
-## Sigma YAML
-
-```yaml
-{sigma_yaml}
-```
-""")
+    st.markdown(f"## {backend_name} Query\n\n```{lang}\n{converted}\n```")
+    st.markdown(f"## Sigma YAML\n\n```yaml\n{sigma_yaml}\n```")

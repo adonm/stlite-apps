@@ -12,7 +12,7 @@
     <div id="root"></div>
     <script src="https://unpkg.com/@stlite/mountable@0.48.0/build/stlite.js"></script>
     <script>
-        const reqs = ["pysigma", "pysigma-backend-microsoft365defender"]
+        const reqs = ["streamlit-permalink", "pysigma", "pysigma-backend-microsoft365defender"]
         fetch(new Request("sigmatron.py")).then((response) => response.text()).then((app_py) => {
             stlite.mount({ requirements: reqs, entrypoint: "app.py", 
                 files: {

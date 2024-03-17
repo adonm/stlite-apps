@@ -5,13 +5,15 @@ on:
   # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-
+  schedule:
+    # Runs every day at 00:00 UTC
+    - cron: '0 0 * * *'
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -31,6 +33,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Update files
+        run: python update.py
+      # Commit all changed files back to the repository
+      - uses: stefanzweifel/git-auto-commit-action@v5
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
