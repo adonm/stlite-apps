@@ -6,5 +6,8 @@ downloads = {
     "enterprise-attack.json": "https://github.com/mitre/cti/raw/master/enterprise-attack/enterprise-attack.json"
 }
 
+# Download external deps
 for fname, url in downloads.items():
     run(["curl", "-L", "-o", fname, url], check=True)
+
+        

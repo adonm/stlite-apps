@@ -12,7 +12,19 @@
     <div id="root"></div>
     <script src="https://unpkg.com/@stlite/mountable@0.48.0/build/stlite.js"></script>
     <script>
-        const reqs = ["streamlit-permalink", "pysigma", "pysigma-backend-microsoft365defender"]
+        const reqs = [
+            "streamlit-permalink",
+            "streamlit-javascript",
+            "pysigma",
+            "pysigma-backend-microsoft365defender",
+            "pysigma-backend-carbonblack",
+            "pysigma-backend-cortexxdr",
+            "pySigma-backend-elasticsearch",
+            "pysigma-backend-splunk",
+            "pysigma-backend-sentinelone",
+            new URL("../wheels/pysigma_backend_opensearch-1.0.1-py3-none-any.whl", document.baseURI).href,
+            new URL("../wheels/pysigma_backend_stix-0.1.8-py3-none-any.whl", document.baseURI).href,
+        ]
         fetch(new Request("sigmatron.py")).then((response) => response.text()).then((app_py) => {
             stlite.mount({ requirements: reqs, entrypoint: "app.py", 
                 files: {
@@ -24,6 +36,10 @@
                         url: "../sigma_all_rules.zip",
                         format: "zip",
                         options: { extractDir: "sigma" }
+                    },
+                    {
+                        url: "../utils.zip", // extra python utils
+                        format: "zip"
                     }
                 ]
             }, document.getElementById("root"))
