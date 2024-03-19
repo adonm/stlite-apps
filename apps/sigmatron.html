@@ -22,8 +22,9 @@
             "pySigma-backend-elasticsearch",
             "pysigma-backend-splunk",
             "pysigma-backend-sentinelone",
-            new URL("../wheels/pysigma_backend_opensearch-1.0.1-py3-none-any.whl", document.baseURI).href,
-            new URL("../wheels/pysigma_backend_stix-0.1.8-py3-none-any.whl", document.baseURI).href,
+            // disabling for now until work out how to load wheels from a github pages deployment with correct content-type
+            // new URL("../wheels/pysigma_backend_opensearch-1.0.1-py3-none-any.whl", document.baseURI).href,
+            // new URL("../wheels/pysigma_backend_stix-0.1.8-py3-none-any.whl", document.baseURI).href,
         ]
         fetch(new Request("sigmatron.py")).then((response) => response.text()).then((app_py) => {
             stlite.mount({ requirements: reqs, entrypoint: "app.py", 
