@@ -1,6 +1,5 @@
 import streamlit as st
-import streamlit_permalink as stp
-from streamlit_javascript import st_javascript
+import pandas as pd
 import yaml, micropip
 from pathlib import Path
 
@@ -20,6 +19,9 @@ from sigma.backends.loki import LogQLBackend
 from sigma.backends.carbonblack import CarbonBlackBackend
 from sigma.pipelines.carbonblack import CarbonBlack_pipeline
 from sigma.backends.cortexxdr import CortexXDRBackend
+
+from utils.iocextract import IoCExtract
+from utils.statemgmt import load_session, save_session
 
 # App configuration
 st.set_page_config(page_title="Sigmatron", layout="wide")
@@ -56,7 +58,13 @@ with view_tab:
                 title = f"{rule['modified']} - {rule['title']} (created {rule['date']})"
     
             rules[title] = rule_meta
-    
+
+        st.session_state.update({ # set default inputs
+            "product": ["windows"],
+            "category": ["process_creation"],
+            "ioc_text": "1.1.1.1\n8.8.8.8\nhttps://sneaky.malicious.domain"
+        })
+        load_session() # load the session once when loading rules
         return rules
 
     @st.cache_resource
@@ -76,29 +84,29 @@ with view_tab:
     rules, backends = rule_cache(), backend_cache()
     
     # Option to enter YAML manually
-    if stp.toggle("Enter yaml manually", url_key="manual"):
-        sigma_yaml = stp.text_area("YAML to convert", url_key="sigma_yaml")
+    if st.toggle("Enter yaml manually", key="manual"):
+        sigma_yaml = st.text_area("YAML to convert", key="sigma_yaml")
     else:
-        # Setup default filters
-        fltrs, defaults = {}, {"product": ["windows"], "category": ["process_creation"]}
-    
         # Sidebar for filters
         with st.sidebar:
             st.markdown("## Filters")
-            for attr in ["tags", "product", "category", "service"]:
+            filters = ["tags", "product", "category", "service"]
+            for attr in filters:
                 options = sorted(set().union(*(el[attr] for el in rules.values())))
-                fltrs[attr] = stp.multiselect(f"{attr.title()} ({len(options)} total)", options, default=defaults.get(attr, []), url_key=attr)
+                st.multiselect(f"{attr.title()} ({len(options)} total)", options, key=attr)
 
             # Reset filters button
-            if st.button("Reset filters"):
-                st.query_params.clear()
+            if st.button("Save session to url"):
+                save_session()
+            
     
         # Filter rules based on selected filters
-        filtered_rules = [rule for rule, el in rules.items() if all(set(opt).intersection(set(el[attr])) for attr, opt in fltrs.items() if opt)]
+        active_filters = {attr: st.session_state[attr] for attr in filters if st.session_state[attr]}
+        filtered_rules = [rule for rule, el in rules.items() if all(set(opt).intersection(set(el[attr])) for attr, opt in active_filters.items())]
     
         # Display filtered rules
         if filtered_rules:
-            rule_title = stp.selectbox(f"Sigma Rule ({len(filtered_rules)}/{len(rules)} total) to display", sorted(filtered_rules, reverse=True), url_key="rule")
+            rule_title = st.selectbox(f"Sigma Rule ({len(filtered_rules)}/{len(rules)} total) to display", sorted(filtered_rules, reverse=True), key="rule")
             selected_rule = rules[rule_title]
             sigma_yaml = selected_rule["path"].read_text()
         else:
@@ -108,7 +116,7 @@ with view_tab:
     # Sidebar for selecting backend and displaying conversion
     with st.sidebar:
         st.markdown("## Convert and display")
-        backend_name = stp.selectbox(f"Sigma Backend ({len(backends)} total)", backends.keys(), url_key="backend")
+        backend_name = st.selectbox(f"Sigma Backend ({len(backends)} total)", backends.keys(), key="backend")
     
     # Convert and display the selected rule
     if "sigma_yaml" in locals() and sigma_yaml is not None:
@@ -125,12 +133,21 @@ with build_tab:
     st.write("todo")
 
 with extract_tab:
-    from utils.iocextract import IoCExtract
-    ioc_text = stp.text_area("Text to extract IOCs from", url_key="ioc_text")
+    st.markdown("## Indicator Of Compromise (IOC) extraction utility")
+    st.markdown("This is based on the [msticpy.transform.IoCExtract](https://msticpy.readthedocs.io/en/latest/data_analysis/IoCExtract.html) utility.")
+    
+    ioc_text = st.text_area("Text to extract IOCs from", key="ioc_text")
     ioc_extractor = IoCExtract()
 
     # any IoCs in the string?
     iocs_found = ioc_extractor.extract(ioc_text)
     
     if iocs_found:
-        st.write(iocs_found)
+        # Convert to a list of dictionaries
+        rows = []
+        for ioc, values in iocs_found.items():
+            for value in values:
+                rows.append({'ioc': ioc, 'value': value})
+        
+        # Display a DataFrame from the list of dictionaries
+        st.dataframe(pd.DataFrame(rows))
