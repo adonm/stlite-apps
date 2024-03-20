@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sigmatron</title>
     <link rel="stylesheet" href="https://unpkg.com/@stlite/mountable@0.48.0/build/stlite.css" />
+    <style>
+        /* Improves display of long queries */
+        code {
+            white-space: pre-wrap !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -27,7 +33,8 @@
             // new URL("../wheels/pysigma_backend_stix-0.1.8-py3-none-any.whl", document.baseURI).href,
         ]
         fetch(new Request("sigmatron.py")).then((response) => response.text()).then((app_py) => {
-            stlite.mount({ requirements: reqs, entrypoint: "app.py", 
+            stlite.mount({
+                requirements: reqs, entrypoint: "app.py",
                 files: {
                     "app.py": app_py,
                     "enterprise-attack.json": { url: "../enterprise-attack.json" }
