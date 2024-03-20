@@ -27,9 +27,13 @@ from utils.statemgmt import load_session, save_session
 st.set_page_config(page_title="Sigmatron", layout="wide")
 st.title("Sigmatron :lab_coat: (◑‿◐) :female-detective:")
 # Link to the main index of stlite-apps
-st.markdown("**[stlite-apps main index](../)**")
+st.markdown("**[stlite-apps main index](../)**, **[Main Sigma Rule Repository](https://github.com/SigmaHQ/sigma)**, **[Sigma Backends](https://sigmahq.io/docs/digging-deeper/backends.html)**")
+session = st.session_state
 
-view_tab, build_tab, extract_tab = st.tabs(["Viewer", "Builder", "Extractor"])
+view_tab, build_tab, extract_tab, about_tab = st.tabs(["Viewer", "Builder", "Extractor", "About"])
+
+with about_tab:
+    st.markdown("Source on github: [adonm/stlite-apps](https://github.com/adonm/stlite-apps)")
 
 with view_tab:
     # Load sigma rules from the "sigma" directory
@@ -59,7 +63,7 @@ with view_tab:
     
             rules[title] = rule_meta
 
-        st.session_state.update({ # set default inputs
+        session.update({ # set default inputs
             "product": ["windows"],
             "category": ["process_creation"],
             "ioc_text": "1.1.1.1\n8.8.8.8\nhttps://sneaky.malicious.domain"
@@ -80,54 +84,61 @@ with view_tab:
             "Cortex XDR (XQL)": (CortexXDRBackend(), "xql")
         }
 
+    # Option to enter YAML manually
+    st.toggle("Enter yaml manually", key="manual")
+
     # Load rules and backends
     rules, backends = rule_cache(), backend_cache()
-    
-    # Option to enter YAML manually
-    if st.toggle("Enter yaml manually", key="manual"):
-        sigma_yaml = st.text_area("YAML to convert", key="sigma_yaml")
-    else:
-        # Sidebar for filters
-        with st.sidebar:
-            st.markdown("## Filters")
-            filters = ["tags", "product", "category", "service"]
-            for attr in filters:
-                options = sorted(set().union(*(el[attr] for el in rules.values())))
-                st.multiselect(f"{attr.title()} ({len(options)} total)", options, key=attr)
 
-            # Reset filters button
-            if st.button("Save session to url"):
-                save_session()
-            
-    
-        # Filter rules based on selected filters
-        active_filters = {attr: st.session_state[attr] for attr in filters if st.session_state[attr]}
-        filtered_rules = [rule for rule, el in rules.items() if all(set(opt).intersection(set(el[attr])) for attr, opt in active_filters.items())]
-    
-        # Display filtered rules
+    # Sidebar for filters
+    with st.sidebar:
+        st.markdown("## Filters")
+        filters = ["tags", "product", "category", "service"]
+        for attr in filters:
+            options = sorted(set().union(*(el[attr] for el in rules.values())))
+            st.multiselect(f"{attr.title()} ({len(options)} total)", options, key=attr)
+
+        # Reset filters button
+        if st.button("Save session to url"):
+            save_session()
+        
+    # Filter rules based on selected filters
+    active_filters = {attr: session[attr] for attr in filters if session[attr]}
+    filtered_rules = sorted([rule for rule, el in rules.items() if all(set(opt).intersection(set(el[attr])) for attr, opt in active_filters.items())], reverse=True)
+
+    # Display filtered rules
+    if not session.get("manual"):
         if filtered_rules:
-            rule_title = st.selectbox(f"Sigma Rule ({len(filtered_rules)}/{len(rules)} total) to display", sorted(filtered_rules, reverse=True), key="rule")
-            selected_rule = rules[rule_title]
-            sigma_yaml = selected_rule["path"].read_text()
+            last_rule = filtered_rules.index(session.get("rule", filtered_rules[0]))
+            session.rule = st.selectbox(f"Sigma Rule ({len(filtered_rules)}/{len(rules)} total) to display", filtered_rules, index = last_rule)
+            # Load text of selected rule if not manually entered
+            selected_rule = rules.get(session.rule)
+            if selected_rule:
+                session.sigmayml = session.selected_rule_text = selected_rule["path"].read_text()
         else:
             st.write("No rules for the selected filters:")
             st.write(fltrs)
-    
+
+    if session.manual:
+        session.sigmayml = st.text_area("YAML to convert", value=session.get("selected_rule_text"))
+
+
     # Sidebar for selecting backend and displaying conversion
     with st.sidebar:
         st.markdown("## Convert and display")
         backend_name = st.selectbox(f"Sigma Backend ({len(backends)} total)", backends.keys(), key="backend")
     
     # Convert and display the selected rule
-    if "sigma_yaml" in locals() and sigma_yaml is not None:
+    if session.get("sigmayml"):
         try:
             backend, lang = backends[backend_name]
-            converted = backend.convert_rule(SigmaRule.from_yaml(sigma_yaml))[0]
+            converted = backend.convert_rule(SigmaRule.from_yaml(session.sigmayml))[0]
         except Exception as e:
             converted = str(e)
     
         st.markdown(f"## {backend_name} Query\n\n```{lang}\n{converted}\n```")
-        st.markdown(f"## Sigma YAML\n\n```yaml\n{sigma_yaml}\n```")
+        if not session.get("manual"):
+            st.markdown(f"## Sigma YAML\n\n```yaml\n{session.sigmayml}\n```")
 
 with build_tab:
     st.write("todo")
