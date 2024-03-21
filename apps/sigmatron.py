@@ -41,29 +41,23 @@ with view_tab:
     # Load sigma rules from the "sigma" directory
     @st.cache_resource
     def rule_cache():
-        rules = {}        
+        rules = []    
         for rule_file in Path("sigma").rglob("*.yml"):
             rule = yaml.safe_load(rule_file.read_text())
-            try:
-                source = rule["logsource"]
-            except KeyError:
-                # Skip rules without a "logsource" key
+            if "logsource" not in rule:
                 continue
     
             rule_meta = {
-                "path": rule_file,
+                "name": f"{rule['date']} - {rule['title']}",
+                "path": rule_file.relative_to("sigma"),
                 "title": rule["title"],
                 "tags": rule.get("tags", []),
-                "description": rule["description"],
-                "product": [source.get("product")] if "product" in source else [],
-                "category": [source.get("category")] if "category" in source else [],
-                "service": [source.get("service")] if "service" in source else [],
+                "description": rule["description"]
             }
-            title = f"{rule['date']} - {rule['title']}"
+            rule_meta.update(rule["logsource"])
             if "modified" in rule:
-                title = f"{rule['modified']} - {rule['title']} (created {rule['date']})"
-    
-            rules[title] = rule_meta
+                rule_meta["name"] = f"{rule['modified']} - {rule['title']} (created {rule['date']})"
+            rules.append(rule_meta)
 
         session.update({ # set default inputs
             "product": ["windows"],
@@ -71,7 +65,7 @@ with view_tab:
             "ioc_text": "1.1.1.1\n8.8.8.8\nhttps://sneaky.malicious.domain"
         })
         load_session() # load the session once when loading rules
-        return rules
+        return pd.DataFrame(rules)
 
     @st.cache_resource
     def backend_cache():
@@ -94,32 +88,38 @@ with view_tab:
     st.toggle("Enter yaml manually", key="manual")
 
     # Sidebar for filters
+    df = rules.copy()
     with st.sidebar:
         st.markdown("## Filters")
-        filters = ["tags", "product", "category", "service"]
+        filters = ["product", "category", "service", "tags"]
         for attr in filters:
-            options = sorted(set().union(*(el[attr] for el in rules.values())))
+            df = df.explode(attr)
+            options = sorted(df[attr].dropna().unique())
             st.multiselect(f"{attr.title()} ({len(options)} total)", options, key=attr)
-
+            if session[attr]:
+                df = df[df[attr].isin(session[attr])]
+                
         # Reset filters button
         if st.button("Save session to url"):
             save_session()
         
     # Filter rules based on selected filters
-    active_filters = {attr: session[attr] for attr in filters if session[attr]}
-    filtered_rules = sorted([rule for rule, el in rules.items() if all(set(opt).intersection(set(el[attr])) for attr, opt in active_filters.items())], reverse=True)
+    df = rules[rules["name"].isin(df['name'])].sort_values(by="name", ascending=False)
+    filtered_rules = list(df["name"])
 
     # Display filtered rules
     if not session.get("manual"):
         if filtered_rules:
+            with st.expander(f"Filtered Rules ({len(filtered_rules)}/{len(rules)} total)"):
+                st.dataframe(df.fillna('').astype("str"), column_order=["name"] + filters + ["path"], hide_index=True)
             index = 0
             if session.get("rule") in filtered_rules:
                 index = filtered_rules.index(session.rule)
-            session.rule = st.selectbox(f"Sigma Rule ({len(filtered_rules)}/{len(rules)} total) to display", filtered_rules, index=index)
+            session.rule = st.selectbox("Select a rule to convert", filtered_rules, index=index)
             # Load text of selected rule if not manually entered
-            selected_rule = rules.get(session.rule)
-            if selected_rule:
-                session.sigmayml = session.selected_rule_text = selected_rule["path"].read_text()
+            selected_rule = rules[rules["name"] == session.rule].iloc[0]
+            if not selected_rule.empty:
+                session.sigmayml = session.selected_rule_text = (Path("sigma") / selected_rule["path"]).read_text()
         else:
             st.write("No rules for the selected filters:")
             st.write(fltrs)
