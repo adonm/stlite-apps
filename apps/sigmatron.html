@@ -20,17 +20,17 @@
     <script>
         const reqs = [
             "pysigma",
-            "pysigma-backend-microsoft365defender",
             "pySigma-backend-elasticsearch",
             "pySigma-pipeline-sysmon",
             "pysigma-backend-splunk",
             "pySigma-backend-loki",
             "pysigma-backend-carbonblack",
             "pysigma-backend-cortexxdr",
-            "pysigma-backend-sentinelone"
-            // disabling for now until work out how to load wheels from a github pages deployment with correct content-type
-            // new URL("../wheels/pysigma_backend_opensearch-1.0.1-py3-none-any.whl", document.baseURI).href,
-            // new URL("../wheels/pysigma_backend_stix-0.1.8-py3-none-any.whl", document.baseURI).href,
+            "pysigma-backend-sentinelone",
+            new URL("../wheels/pysigma_backend_microsoft365defender-0.2.4-py3-none-any.whl", document.baseURI).href,
+            new URL("../wheels/pysigma_backend_opensearch-1.0.1-py3-none-any.whl", document.baseURI).href,
+            // too unstable
+            // new URL("../wheels/pysigma_backend_stix-0.1.8-py3-none-any.whl", document.baseURI).href
         ]
         fetch(new Request("sigmatron.py")).then((response) => response.text()).then((app_py) => {
             stlite.mount({

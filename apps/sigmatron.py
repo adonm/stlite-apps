@@ -7,6 +7,8 @@ from sigma.rule import SigmaRule
 
 from sigma.backends.microsoft365defender import Microsoft365DefenderBackend
 
+from sigma.backends.opensearch import OpensearchLuceneBackend
+
 from sigma.backends.elasticsearch import LuceneBackend
 from sigma.pipelines.elasticsearch.windows import ecs_windows
 from sigma.pipelines.sysmon import sysmon_pipeline
@@ -76,6 +78,7 @@ with view_tab:
         # Convenient sigma backends, sourced from popular items at https://github.com/search?q=pysigma-backend&type=repositories&s=stars&o=desc
         return {
             "M365 Defender (KQL)": (Microsoft365DefenderBackend(), "kusto"),
+            "Opensearch winlogbeat (Lucene)": (OpensearchLuceneBackend(ecs_windows()), "lucene"),
             "Elastic winlogbeat (Lucene)": (LuceneBackend(ecs_windows()), "lucene"),
             "Elastic sysmon (Lucene)": (LuceneBackend(sysmon_pipeline()), "lucene"),
             "Splunk": (SplunkBackend(splunk_windows_pipeline()), "splunk"),
@@ -109,8 +112,10 @@ with view_tab:
     # Display filtered rules
     if not session.get("manual"):
         if filtered_rules:
-            last_rule = filtered_rules.index(session.get("rule", filtered_rules[0]))
-            session.rule = st.selectbox(f"Sigma Rule ({len(filtered_rules)}/{len(rules)} total) to display", filtered_rules, index = last_rule)
+            index = 0
+            if session.get("rule") in filtered_rules:
+                index = filtered_rules.index(session.rule)
+            session.rule = st.selectbox(f"Sigma Rule ({len(filtered_rules)}/{len(rules)} total) to display", filtered_rules, index=index)
             # Load text of selected rule if not manually entered
             selected_rule = rules.get(session.rule)
             if selected_rule:
