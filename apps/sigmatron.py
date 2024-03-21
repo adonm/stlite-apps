@@ -84,11 +84,11 @@ with view_tab:
             "Cortex XDR (XQL)": (CortexXDRBackend(), "xql")
         }
 
-    # Option to enter YAML manually
-    st.toggle("Enter yaml manually", key="manual")
-
     # Load rules and backends
     rules, backends = rule_cache(), backend_cache()
+
+    # Option to enter YAML manually
+    st.toggle("Enter yaml manually", key="manual")
 
     # Sidebar for filters
     with st.sidebar:
