@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pandas Picnic</title>
+    <link rel="stylesheet" href="https://unpkg.com/@stlite/mountable/build/stlite.css" />
+    <style>
+        /* Improves display of long queries */
+        code {
+            white-space: pre-wrap !important;
+        }
+        /* hide deploy button */
+        .stDeployButton {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script src="https://unpkg.com/@stlite/mountable/build/stlite.js"></script>
+    <script>
+        fetch(new Request("pandaspicnic.py")).then((response) => response.text()).then((app_py) => {
+            stlite.mount({
+                entrypoint: "app.py",
+                files: {
+                    "app.py": app_py
+                },
+                archives: [
+                    {
+                        url: "../utils.zip", // extra python utils
+                        format: "zip"
+                    }
+                ]
+            }, document.getElementById("root"))
+        });
+    </script>
+</body>
+
+</html>

@@ -29,7 +29,9 @@ from utils.statemgmt import load_session, save_session
 st.set_page_config(page_title="Sigmatron", layout="wide")
 st.title("Sigmatron :lab_coat: (◑‿◐) :female-detective:")
 # Link to the main index of stlite-apps
-st.markdown("**[stlite-apps main index](../)**, **[Main Sigma Rule Repository](https://github.com/SigmaHQ/sigma)**, **[Sigma Backends](https://sigmahq.io/docs/digging-deeper/backends.html)**")
+st.markdown(
+    "**[stlite-apps main index](../)**, **[Main Sigma Rule Repository](https://github.com/SigmaHQ/sigma)**, **[Sigma Backends](https://sigmahq.io/docs/digging-deeper/backends.html)**"
+)
 session = st.session_state
 
 view_tab, build_tab, extract_tab, about_tab = st.tabs(["Viewer", "Builder", "Extractor", "About"])
@@ -41,30 +43,28 @@ with view_tab:
     # Load sigma rules from the "sigma" directory
     @st.cache_resource
     def rule_cache():
-        rules = []    
+        rules = []
         for rule_file in Path("sigma").rglob("*.yml"):
             rule = yaml.safe_load(rule_file.read_text())
             if "logsource" not in rule:
                 continue
-    
+
             rule_meta = {
                 "name": f"{rule['date']} - {rule['title']}",
                 "path": rule_file.relative_to("sigma"),
                 "title": rule["title"],
                 "tags": rule.get("tags", []),
-                "description": rule["description"]
+                "description": rule["description"],
             }
             rule_meta.update(rule["logsource"])
             if "modified" in rule:
                 rule_meta["name"] = f"{rule['modified']} - {rule['title']} (created {rule['date']})"
             rules.append(rule_meta)
 
-        session.update({ # set default inputs
-            "product": ["windows"],
-            "category": ["process_creation"],
-            "ioc_text": "1.1.1.1\n8.8.8.8\nhttps://sneaky.malicious.domain"
-        })
-        load_session() # load the session once when loading rules
+        session.update(
+            {"product": ["windows"], "category": ["process_creation"], "ioc_text": "1.1.1.1\n8.8.8.8\nhttps://sneaky.malicious.domain"}  # set default inputs
+        )
+        load_session()  # load the session once when loading rules
         return pd.DataFrame(rules)
 
     @st.cache_resource
@@ -78,7 +78,7 @@ with view_tab:
             "Splunk": (SplunkBackend(splunk_windows_pipeline()), "splunk"),
             "Grafana Loki (LogQL)": (LogQLBackend(), "logql"),
             "Carbon Black (Lucene)": (CarbonBlackBackend(CarbonBlack_pipeline()), "lucene"),
-            "Cortex XDR (XQL)": (CortexXDRBackend(), "xql")
+            "Cortex XDR (XQL)": (CortexXDRBackend(), "xql"),
         }
 
     # Load rules and backends
@@ -98,20 +98,20 @@ with view_tab:
             st.multiselect(f"{attr.title()} ({len(options)} total)", options, key=attr)
             if session[attr]:
                 df = df[df[attr].isin(session[attr])]
-                
+
         # Reset filters button
         if st.button("Save session to url"):
             save_session()
-        
+
     # Filter rules based on selected filters
-    df = rules[rules["name"].isin(df['name'])].sort_values(by="name", ascending=False)
+    df = rules[rules["name"].isin(df["name"])].sort_values(by="name", ascending=False)
     filtered_rules = list(df["name"])
 
     # Display filtered rules
     if not session.get("manual"):
         if filtered_rules:
             with st.expander(f"Filtered Rules ({len(filtered_rules)}/{len(rules)} total)"):
-                st.dataframe(df.fillna('').astype("str"), column_order=["name"] + filters + ["path"], hide_index=True)
+                st.dataframe(df.fillna("").astype("str"), column_order=["name"] + filters + ["path"], hide_index=True)
             index = 0
             if session.get("rule") in filtered_rules:
                 index = filtered_rules.index(session.rule)
@@ -127,12 +127,11 @@ with view_tab:
     if session.manual:
         session.sigmayml = st.text_area("YAML to convert", value=session.get("selected_rule_text"))
 
-
     # Sidebar for selecting backend and displaying conversion
     with st.sidebar:
         st.markdown("## Convert and display")
         backend_name = st.selectbox(f"Sigma Backend ({len(backends)} total)", backends.keys(), key="backend")
-    
+
     # Convert and display the selected rule
     if session.get("sigmayml"):
         try:
@@ -140,7 +139,7 @@ with view_tab:
             converted = backend.convert_rule(SigmaRule.from_yaml(session.sigmayml))[0]
         except Exception as e:
             converted = str(e)
-    
+
         st.markdown(f"## {backend_name} Query\n\n```{lang}\n{converted}\n```")
         if not session.get("manual"):
             st.markdown(f"## Sigma YAML\n\n```yaml\n{session.sigmayml}\n```")
@@ -151,19 +150,19 @@ with build_tab:
 with extract_tab:
     st.markdown("## Indicator Of Compromise (IOC) extraction utility")
     st.markdown("This is based on the [msticpy.transform.IoCExtract](https://msticpy.readthedocs.io/en/latest/data_analysis/IoCExtract.html) utility.")
-    
+
     ioc_text = st.text_area("Text to extract IOCs from", key="ioc_text")
     ioc_extractor = IoCExtract()
 
     # any IoCs in the string?
     iocs_found = ioc_extractor.extract(ioc_text)
-    
+
     if iocs_found:
         # Convert to a list of dictionaries
         rows = []
         for ioc, values in iocs_found.items():
             for value in values:
-                rows.append({'ioc': ioc, 'value': value})
-        
+                rows.append({"ioc": ioc, "value": value})
+
         # Display a DataFrame from the list of dictionaries
         st.dataframe(pd.DataFrame(rows))

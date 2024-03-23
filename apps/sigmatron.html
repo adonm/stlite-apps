@@ -5,18 +5,22 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sigmatron</title>
-    <link rel="stylesheet" href="https://unpkg.com/@stlite/mountable@0.48.0/build/stlite.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@stlite/mountable/build/stlite.css" />
     <style>
         /* Improves display of long queries */
         code {
             white-space: pre-wrap !important;
+        }
+        /* hide deploy button */
+        .stDeployButton {
+            display: none;
         }
     </style>
 </head>
 
 <body>
     <div id="root"></div>
-    <script src="https://unpkg.com/@stlite/mountable@0.48.0/build/stlite.js"></script>
+    <script src="https://unpkg.com/@stlite/mountable/build/stlite.js"></script>
     <script>
         const reqs = [
             "pysigma",
