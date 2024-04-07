@@ -41,11 +41,11 @@
                 requirements: reqs, entrypoint: "app.py",
                 files: {
                     "app.py": app_py,
-                    "enterprise-attack.json": { url: "../enterprise-attack.json" }
+                    "enterprise-attack.json": { url: "../data/enterprise-attack.json" }
                 },
                 archives: [
                     {
-                        url: "../sigma_all_rules.zip",
+                        url: "../data/sigma_all_rules.zip",
                         format: "zip",
                         options: { extractDir: "sigma" }
                     },
