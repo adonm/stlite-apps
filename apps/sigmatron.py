@@ -5,23 +5,6 @@ from pathlib import Path
 
 from sigma.rule import SigmaRule
 
-from sigma.backends.microsoft365defender import Microsoft365DefenderBackend
-
-from sigma.backends.opensearch import OpensearchLuceneBackend
-
-from sigma.backends.elasticsearch import LuceneBackend
-from sigma.pipelines.elasticsearch.windows import ecs_windows
-from sigma.pipelines.sysmon import sysmon_pipeline
-
-from sigma.backends.splunk import SplunkBackend
-from sigma.pipelines.splunk import splunk_windows_pipeline
-
-from sigma.backends.loki import LogQLBackend
-
-from sigma.backends.carbonblack import CarbonBlackBackend
-from sigma.pipelines.carbonblack import CarbonBlack_pipeline
-from sigma.backends.cortexxdr import CortexXDRBackend
-
 from utils.iocextract import IoCExtract
 from utils.statemgmt import load_session, save_session
 
@@ -69,6 +52,22 @@ with view_tab:
 
     @st.cache_resource
     def backend_cache():
+        from sigma.backends.microsoft365defender import Microsoft365DefenderBackend
+
+        from sigma.backends.opensearch import OpensearchLuceneBackend
+        
+        from sigma.backends.elasticsearch import LuceneBackend
+        from sigma.pipelines.elasticsearch.windows import ecs_windows
+        from sigma.pipelines.sysmon import sysmon_pipeline
+        
+        from sigma.backends.splunk import SplunkBackend
+        from sigma.pipelines.splunk import splunk_windows_pipeline
+        
+        from sigma.backends.loki import LogQLBackend
+        
+        from sigma.backends.carbonblack import CarbonBlackBackend
+        from sigma.pipelines.carbonblack import CarbonBlack_pipeline
+        #from sigma.backends.cortexxdr import CortexXDRBackend
         # Convenient sigma backends, sourced from popular items at https://github.com/search?q=pysigma-backend&type=repositories&s=stars&o=desc
         return {
             "M365 Defender (KQL)": (Microsoft365DefenderBackend(), "kusto"),
@@ -78,7 +77,7 @@ with view_tab:
             "Splunk": (SplunkBackend(splunk_windows_pipeline()), "splunk"),
             "Grafana Loki (LogQL)": (LogQLBackend(), "logql"),
             "Carbon Black (Lucene)": (CarbonBlackBackend(CarbonBlack_pipeline()), "lucene"),
-            "Cortex XDR (XQL)": (CortexXDRBackend(), "xql"),
+            #"Cortex XDR (XQL)": (CortexXDRBackend(), "xql"),
         }
 
     # Load rules and backends
