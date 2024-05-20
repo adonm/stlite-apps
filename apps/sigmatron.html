@@ -30,10 +30,10 @@
             "pysigma-backend-splunk",
             "pySigma-backend-loki",
             "pysigma-backend-carbonblack",
-            "pysigma-backend-cortexxdr",
+            //"pysigma-backend-cortexxdr",
             "pysigma-backend-sentinelone",
             "pySigma-backend-microsoft365defender",
-            "pySigma-backend-stix2"
+            //"pySigma-backend-stix2"
         ]
         fetch(new Request("sigmatron.py")).then((response) => response.text()).then((app_py) => {
             stlite.mount({

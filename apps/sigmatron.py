@@ -70,8 +70,8 @@ with view_tab:
         #from sigma.backends.cortexxdr import CortexXDRBackend
         #from sigma.pipelines.cortexxdr import CortexXDR_pipeline
 
-        from sigma.backends.stix import stixBackend
-        from sigma.pipelines.stix import stix_shifter
+        #from sigma.backends.stix import stixBackend
+        #from sigma.pipelines.stix import stix_shifter
 
 
         # Convenient sigma backends, sourced from popular items at https://github.com/search?q=pysigma-backend&type=repositories&s=stars&o=desc
