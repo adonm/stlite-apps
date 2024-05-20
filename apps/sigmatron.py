@@ -68,6 +68,12 @@ with view_tab:
         from sigma.backends.carbonblack import CarbonBlackBackend
         from sigma.pipelines.carbonblack import CarbonBlack_pipeline
         #from sigma.backends.cortexxdr import CortexXDRBackend
+        #from sigma.pipelines.cortexxdr import CortexXDR_pipeline
+
+        from sigma.backends.stix import stixBackend
+        from sigma.pipelines.stix import stix_shifter
+
+
         # Convenient sigma backends, sourced from popular items at https://github.com/search?q=pysigma-backend&type=repositories&s=stars&o=desc
         return {
             "M365 Defender (KQL)": (Microsoft365DefenderBackend(), "kusto"),
@@ -77,7 +83,8 @@ with view_tab:
             "Splunk": (SplunkBackend(splunk_windows_pipeline()), "splunk"),
             "Grafana Loki (LogQL)": (LogQLBackend(), "logql"),
             "Carbon Black (Lucene)": (CarbonBlackBackend(CarbonBlack_pipeline()), "lucene"),
-            #"Cortex XDR (XQL)": (CortexXDRBackend(), "xql"),
+            #"Cortex XDR (XQL)": (CortexXDRBackend(CortexXDR_pipeline()), "xql"),
+            #"STIX": (stixBackend(stix_shifter()), "stix"),
         }
 
     # Load rules and backends

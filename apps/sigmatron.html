@@ -25,16 +25,15 @@
         const reqs = [
             "pysigma",
             "pySigma-backend-elasticsearch",
+            "pySigma-backend-opensearch",
             "pySigma-pipeline-sysmon",
             "pysigma-backend-splunk",
             "pySigma-backend-loki",
             "pysigma-backend-carbonblack",
             "pysigma-backend-cortexxdr",
             "pysigma-backend-sentinelone",
-            new URL("../wheels/pysigma_backend_microsoft365defender-0.2.4-py3-none-any.whl", document.baseURI).href,
-            new URL("../wheels/pysigma_backend_opensearch-1.0.1-py3-none-any.whl", document.baseURI).href,
-            // too unstable
-            // new URL("../wheels/pysigma_backend_stix-0.1.8-py3-none-any.whl", document.baseURI).href
+            "pySigma-backend-microsoft365defender",
+            "pySigma-backend-stix2"
         ]
         fetch(new Request("sigmatron.py")).then((response) => response.text()).then((app_py) => {
             stlite.mount({
