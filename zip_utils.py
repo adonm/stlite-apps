@@ -6,4 +6,5 @@ import zipfile
 utils = Path("utils").glob("*.py")
 with zipfile.ZipFile('utils.zip', 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zip_file:
     for path in utils:
+        print(path)
         zip_file.write(path)

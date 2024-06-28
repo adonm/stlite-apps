@@ -53,6 +53,7 @@ with view_tab:
     @st.cache_resource
     def backend_cache():
         from sigma.backends.microsoft365defender import Microsoft365DefenderBackend
+        from sigma.pipelines.microsoft365defender.sentinelasim import sentinel_asim_pipeline
 
         from sigma.backends.opensearch import OpensearchLuceneBackend
         
@@ -77,6 +78,7 @@ with view_tab:
         # Convenient sigma backends, sourced from popular items at https://github.com/search?q=pysigma-backend&type=repositories&s=stars&o=desc
         return {
             "M365 Defender (KQL)": (Microsoft365DefenderBackend(), "kusto"),
+            "Microsoft Sentinel ASIM (KQL)": (Microsoft365DefenderBackend(sentinel_asim_pipeline()), "kusto"),
             "Opensearch winlogbeat (Lucene)": (OpensearchLuceneBackend(ecs_windows()), "lucene"),
             "Elastic winlogbeat (Lucene)": (LuceneBackend(ecs_windows()), "lucene"),
             "Elastic sysmon (Lucene)": (LuceneBackend(sysmon_pipeline()), "lucene"),

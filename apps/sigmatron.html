@@ -32,7 +32,8 @@
             "pysigma-backend-carbonblack",
             //"pysigma-backend-cortexxdr",
             "pysigma-backend-sentinelone",
-            "pySigma-backend-microsoft365defender",
+            //"pySigma-backend-microsoft365defender",
+            new URL("pysigma_backend_microsoft365defender-0.2.6-py3-none-any.whl", document.baseURI).href
             //"pySigma-backend-stix2"
         ]
         fetch(new Request("sigmatron.py")).then((response) => response.text()).then((app_py) => {
